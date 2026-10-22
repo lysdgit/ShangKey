@@ -25,6 +25,11 @@ runtime/ime.log
 runtime/ime_fault.txt
 runtime/status_pos.json
 runtime/switch_state.json
+runtime/oled_preview.png
+runtime/oled_e2e.png
+runtime/_font_cmp.png
+runtime/_layout_cmp.png
+runtime/_layout2.png
 
 # ---- RIME 部署缓存与用户库（每次打字都会变，且含本机 ID） ----
 runtime/rime_user/build/

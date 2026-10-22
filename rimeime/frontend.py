@@ -30,7 +30,7 @@ _DEBUG_CARET = os.environ.get("SHANGKEY_DEBUG_CARET", "") not in ("", "0")
 
 
 class Frontend:
-    def __init__(self, rime, ui, switcher=None):
+    def __init__(self, rime, ui, switcher=None, oled_state=None):
         self.rime = rime
         self.ui = ui
         self.enabled = True
@@ -42,6 +42,8 @@ class Frontend:
         self._alt_down = False
         # 特色2：规则引擎（selftest 可传 None 关闭）
         self.switcher = switcher
+        # OLED 小屏同步：状态快照（可为 None = 不启用）
+        self.oled = oled_state
         self._focus = None
         self._pending = None  # (WindowInfo, 生效截止时间 monotonic)
         self._reapply_flag = False  # 标签页上报 -> 重决策标记（HTTP 线程置位）
@@ -69,6 +71,9 @@ class Frontend:
         else:
             label = "繁"
         self.ui.queue.put(("status", label, source))
+        # 小屏同步：中英状态（拼音串/候选由 _refresh 更新）
+        if self.oled is not None:
+            self.oled.update(mode=label, source=source)
 
     def toggle_ascii(self, source="手动"):
         """切换中英。注意：只能在主线程调用（含写盘/跨线程消息），
@@ -168,6 +173,13 @@ class Frontend:
             return
         if ctx and (ctx.preedit or ctx.candidates):
             self._composing = True
+            # 小屏同步：拼音串 + 候选列表 + 高亮位
+            if self.oled is not None:
+                self.oled.update(
+                    preedit=ctx.preedit or "",
+                    candidates=[c.text for c in ctx.candidates],
+                    highlighted=ctx.highlighted,
+                )
             # 定位链（见 caret.get_input_pos）：
             #   GetGUIThreadInfo（原生控件）
             #   -> 浏览器扩展上报（Chromium 网页输入框，精确）
@@ -191,6 +203,9 @@ class Frontend:
     def _clear(self):
         self._composing = False
         self.ui.queue.put(("hide",))
+        # 小屏同步：清掉拼音串与候选（保留中英状态行）
+        if self.oled is not None:
+            self.oled.clear_composition()
 
     # ---- 钩子安装
 

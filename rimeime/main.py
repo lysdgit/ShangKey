@@ -23,6 +23,8 @@ import keyboard
 
 from .frontend import Frontend
 from .importer import PROJECT_ROOT, ensure_double_pinyin, ensure_schema_patch
+from .oled import OledState
+from .oled_server import start_oled_server
 from .repl import make_rime, notification_cb
 from .switcher import Switcher, WindowInfo
 from .tray import TrayIcon
@@ -38,6 +40,7 @@ TRAY_PAUSE = 102
 TRAY_AUTORUN = 103
 TRAY_QUIT = 104
 TRAY_RESET_STATUS = 105
+TRAY_OLED = 106
 DETACHED_PROCESS = 0x00000008
 
 
@@ -274,13 +277,25 @@ def main():
         print(f"url endpoint: http://127.0.0.1:{srv.server_address[1]}/url "
               f"(browser extension -> POST)")
 
+    # OLED 小屏同步：状态快照 + 局域网取帧服务
+    oled_state = OledState()
+    oled_srv = oled_renderer = None
+    if "oled" not in DISABLE:
+        oled_srv, oled_renderer = start_oled_server(oled_state)
+        if oled_srv is not None:
+            port = oled_srv.server_address[1]
+            from .oled_server import _local_lan_ip
+            lan = _local_lan_ip()
+            print(f"oled endpoint: http://{lan}:{port}/frame.bin "
+                  f"(ESP8266 目标；防火墙需放行 TCP {port})")
+
     ui = UI()
     ui.poll()
-    fe = Frontend(rime, ui, switcher=switcher)
+    fe = Frontend(rime, ui, switcher=switcher, oled_state=oled_state)
     fe.start()
     threading.Thread(target=keyboard.wait, daemon=True).start()
 
-    # 系统托盘：词库管理 / 暂停拦截 / 开机自启 / 退出
+    # 系统托盘：词库管理 / 暂停拦截 / 开机自启 / OLED 小屏 / 退出
     tray_icon = None
     if "tray" not in DISABLE:
         tray_icon = TrayIcon(
@@ -289,10 +304,13 @@ def main():
                    (TRAY_PAUSE, "暂停键盘拦截", "check"),
                    (TRAY_AUTORUN, "开机自启", "check"),
                    (TRAY_RESET_STATUS, "语言图标复位到右上角", None),
+                   (TRAY_OLED, "OLED 小屏服务", "check"),
                    (TRAY_QUIT, "退出", None)],
             icon_path=PROJECT_ROOT / "runtime" / "shangkey.ico")
         if autostart.is_enabled():
             tray_icon.checked.add(TRAY_AUTORUN)
+        if oled_srv is not None:
+            tray_icon.checked.add(TRAY_OLED)
 
         def _on_tray(mid):
             # 托盘线程：涉及 UI/引擎的都投队列回主线程
@@ -315,11 +333,33 @@ def main():
                 tray_icon.set_checked(TRAY_AUTORUN, autostart.is_enabled())
             elif mid == TRAY_RESET_STATUS:
                 ui.queue.put(("reset_status",))
+            elif mid == TRAY_OLED:
+                # 开关小屏取帧服务：起停都放主线程，避免与其他 UI 操作竞争
+                ui.queue.put(("toggle_oled",))
             elif mid == TRAY_QUIT:
                 fe.quit()
 
         if tray_icon.start(on_menu=_on_tray):
             print("tray icon running")
+
+    # OLED 小屏服务开关（托盘 -> UI 队列 -> 主线程执行）
+    def _toggle_oled():
+        nonlocal oled_srv, oled_renderer
+        if oled_srv is not None:
+            oled_srv.shutdown()
+            oled_srv.server_close()
+            oled_srv = None
+            oled_renderer = None
+            if tray_icon:
+                tray_icon.set_checked(TRAY_OLED, False)
+            print("[oled] 小屏服务已停止", flush=True)
+        else:
+            oled_srv, oled_renderer = start_oled_server(oled_state)
+            if oled_srv is not None and tray_icon:
+                tray_icon.set_checked(TRAY_OLED, True)
+            print("[oled] 小屏服务已启动", flush=True)
+
+    ui.on_toggle_oled = _toggle_oled
 
     print("ShangKey IME running. Ctrl+Alt+K 开关 / Shift 切中英 / Ctrl+Alt+Q 退出")
     ui.mainloop()

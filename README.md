@@ -5,6 +5,8 @@
 1. **自建词库 + 类 VSCode 补全体验**——支持导入 txt / csv / RIME dict / 搜狗 `.scel` 词库，导入词优先于基础词库上屏；
 2. **按场景自动切换中英文**——分层规则引擎，写代码、敲命令、逛编程网站时自动切英文，回聊天窗口自动切回中文。
 
+额外提供 **OLED 小屏同步**（ESP8266 + SSD1306 128x64）：打字内容实时显示在键盘旁边的小屏上，打字时不用抬头看显示器。画面在电脑端渲染，固件零第三方库依赖。详见 [runtime/oled/README.md](runtime/oled/README.md)。
+
 > 当前版本 **v0.3.0**，原型验证阶段（全局键盘钩子方案，非 TSF 标准 IME，见 [8. 已完成与后续计划](#8-已完成与后续计划)）。
 >
 > 仓库：<https://github.com/lysdgit/ShangKey>
@@ -60,9 +62,23 @@
 | 外观全配置 | 字体、字号、配色、高亮色、不透明度（`runtime/ui.json`） |
 | 中英状态小窗 | 默认屏幕右上角，显示当前模式 + 切换来源；**按住左键可拖到任意位置（含副屏）**，松手后位置记入 `runtime/status_pos.json`，下次启动沿用；托盘菜单「语言图标复位到右上角」可回默认位 |
 | 翻页键 | `-` `=` 与 `,` `.`（composing 状态下映射 Page_Up/Down） |
-| 系统托盘 | 左/右键弹菜单：词库管理 / 暂停拦截 / 开机自启 / 语言图标复位 / 退出 |
+| 系统托盘 | 左/右键弹菜单：词库管理 / 暂停拦截 / 开机自启 / 语言图标复位 / **OLED 小屏服务开关** / 退出 |
 
-### 1.4 快捷键一览
+### 1.4 OLED 小屏同步（ESP8266 + SSD1306）
+
+打字内容实时镜像到键盘旁边的小屏：拼音串、候选词（第 1 个反白高亮）、中英状态。
+
+| 项 | 说明 |
+|---|---|
+| 画面来源 | **电脑端渲染**：PIL 把界面画成 128x64 单色位图，SSD1306 一帧正好 1024 字节（页序），直接推给小屏 |
+| 固件依赖 | **零第三方库**——只用 ESP8266 core 自带的 WiFi / HTTP / Wire，不用装 U8g2、不烧中文字库 |
+| 取帧接口 | `GET /frame.bin`（1024B 原始位图）、`/frame.png`（PNG 预览）、`/state.json`（状态 JSON） |
+| 自动发现 | 小屏上电 UDP 广播找电脑（UDP 61825），电脑回「IP:端口」；**电脑 IP 变了不用重新烧固件** |
+| 渲染位置 | 电脑端（后台线程 + 脏标记 + 缓存帧），不在按键钩子线程同步渲染，避免拖慢候选窗 |
+| 开关 | 托盘菜单「OLED 小屏服务」；或 `SHANGKEY_DISABLE=oled` 完全禁用 |
+| 详细说明 | [runtime/oled/README.md](runtime/oled/README.md)（接线、烧录、防火墙、排查） |
+
+### 1.5 快捷键一览
 
 | 快捷键 | 作用 |
 |---|---|
@@ -90,6 +106,9 @@ flowchart TB
         MQ --> UI
         UI -- "set_ascii()" --> RIME
         FE -- "process_key / commit" --> RIME
+        FE -- "状态快照" --> OL["OledState<br/>preedit / 候选 / 模式"]
+        OL --> RD["oled 渲染线程<br/>PIL → 128x64 位图"]
+        RD --> OS["oled_server<br/>HTTP 0.0.0.0:61824<br/>UDP 61825 自动发现"]
     end
     EXT["浏览器扩展 (MV3)<br/>background.js + content.js"] -- "POST /url" --> US
     EXT -- "POST /caret" --> US
@@ -98,12 +117,15 @@ flowchart TB
     CF --> FE
     RIME["librime (rime.dll)<br/>来自 Weasel 安装目录"] --> DB[("runtime/rime_user<br/>用户词库 / 部署产物")]
     SW --> MEM[("switch_rules.json<br/>switch_memory.json")]
+    OS -- "HTTP 拉 1024B 位图" --> ESP["ESP8266 + SSD1306<br/>128x64 小屏"]
+    ESP -- "UDP 广播找电脑" --> OS
 ```
 
 - **引擎层**：librime 1.13.1（随小狼毫 Weasel 安装），通过 ctypes 直调；schema `luna_pinyin_simp` + 自定义词库 `shangkey.dict.yaml`。
 - **前端层**：Python + tkinter。LL 键盘钩子拦截按键 → rime `process_key` 组词 → 候选窗展示 → 数字键选词后 `SendInput`（KEYEVENTF_UNICODE）上屏。
 - **决策层**：Switcher 每 30ms tick 驱动，焦点事件防抖后按层决策，结果经 `set_ascii` 下发引擎。
 - **定位层**：`caret.get_input_pos()` 四级链——原生插入符 / 扩展上报 / 该窗口最后点击位置 / 窗口兜底。Chromium 系窗口把「扩展上报」放在首位（网页输入框没有 Win32 插入符），但保留原生插入符在 click 之前（地址栏、查找框只有原生准）。兜底的「窗口中心」已废弃为主选，改用该窗口记住的点击位置与鼠标位置（原因见 §7.3）。
+- **外设层**：`OledState` 收集组词状态 → 后台渲染线程出 1024 字节位图 → HTTP 供小屏拉取。渲染刻意放在电脑端：SSD1306 是纯位图屏，帧格式天然吻合，且固件因此不需要中文字库。
 
 ---
 
@@ -198,6 +220,18 @@ python runtime\demo_keyi.py
 | `ui.json` | 候选窗/状态窗外观（字体、字号、配色、orientation、opacity）；删除则用内置默认 |
 | `status_pos.json` | 语言图标（状态小窗）的位置记忆（自动维护）；删除或托盘「语言图标复位」即回右上角 |
 | `rime_user/shangkey.dict.yaml` | 导入词库产物（importer/dictmgr 维护，勿手改） |
+
+OLED 小屏用**环境变量**配置（不占 `runtime/` 位置）：
+
+| 变量 | 作用 | 默认 |
+|---|---|---|
+| `SHANGKEY_OLED_HOST` | 取帧服务监听地址；设 `127.0.0.1` 则只允许本机访问 | `0.0.0.0` |
+| `SHANGKEY_OLED_PORT` | HTTP 端口（小屏固件里的 `HTTP_PORT` 需一致） | `61824` |
+| `SHANGKEY_OLED_TOKEN` | 加 token 校验，访问时带 `?token=xxx` | 空（不校验） |
+| `SHANGKEY_DISABLE` | 追加 `oled` 可完全禁用小屏服务 | 空 |
+
+> 小屏侧还有 UDP 61825 端口用于自动发现（`DISCOVERY_PORT`）。三项端口
+> 都需要在 Windows 防火墙放行，命令见 [runtime/oled/README.md](runtime/oled/README.md)。
 
 新增一条 L1 规则示例：
 
@@ -314,6 +348,18 @@ git push origin main v0.3.1        # 推送 tag 即触发构建与发版
 | 地址栏里打字候选窗反而乱跑 | 一度把 Chromium 的原生插入符降到最后——但地址栏、查找框恰恰只有原生准（扩展管不到浏览器 UI） | 顺序定为 **扩展上报 → 原生插入符 → 点击位置**；原生插入符同时做合理性校验（高 6~160px、宽 ≤40px，否则视为控件矩形直接丢弃） |
 | 定位来源查不出来 | —— | `SHANGKEY_DEBUG_CARET=1` 启动输入法，每次组词打印 `[caret] source=… native=… ext=… click=…`，落盘在 `runtime/ime.log` |
 
+### 7.5 OLED 小屏同步
+
+| 问题 | 根因 | 解决 |
+|---|---|---|
+| 固件要装 U8g2、烧中文字库，flash 吃紧 | 若在小屏端渲染中文，就得内置 GB2312 点阵字库（十几 KB 起），ESP8266 的 flash 本就紧张 | **把渲染搬到电脑端**：SSD1306 是纯位图屏，128x64 一帧正好 1024 字节且天然页序，电脑用 PIL 画好推过去。固件只当显示管子，**零第三方库**，中文还更清晰 |
+| 同步渲染拖慢候选窗 | PIL 画一帧约 10ms，打字时每按一键都同步渲染会掉帧 | 渲染放后台线程：状态变更只置脏标记，后台线程出帧并缓存，HTTP 线程直接取缓存帧 |
+| 每帧都重画，白费 CPU | 状态未变时版本号不变 | `OledState.version` 只在内容真变了时自增，版本一致直接复用缓存帧 |
+| 小屏不知道电脑 IP，IP 一变就得重新烧固件 | 静态 IP 配置在固件里，DHCP 续租就失效 | 电脑端开 UDP 61825 应答广播探测（4 字节 `SKY1`），回「IP:端口」；固件每 5 秒重发探测，电脑重启/换网段都能自动接上 |
+| 自动发现回传的 IP 是 127.0.0.1，小屏连不上 | `socket.gethostbyname(gethostname())` 在多网卡（虚拟网卡/VPN/WSL）下会返回回环或虚拟网卡地址 | 改用「UDP socket connect 到公网地址」的标准技巧：connect 只做路由选择不发包，内核据此选定出口网卡，`getsockname()` 即真实局域网 IP |
+| 12px 微软雅黑在单色屏上糊成双影 | 抗锯齿灰度在 1bpp 屏上阈值化后笔画粘连 | 首选**黑体**（笔画实、无抗锯齿感），12px 是单色屏上中文可读的下限；状态行也从 10px 提到 12px |
+| 局域网拉不到帧 | Windows 防火墙默认拦截入站 | README 给了三条 `New-NetFirewallRule` 命令（TCP 61824 / UDP 61825） |
+
 ---
 
 ## 8. 已完成与后续计划
@@ -329,6 +375,7 @@ git push origin main v0.3.1        # 推送 tag 即触发构建与发版
 - ✅ 开源发布：代码开源到 [lysdgit/ShangKey](https://github.com/lysdgit/ShangKey)，`v0.3.0` 提供 exe 与完整发布包下载
 - ✅ CI 自动发版：GitHub Actions 监听 `v*` tag，自动构建 exe + 发布包并挂 Release（见 [6.2](#62-自动发版github-actions)）
 - ✅ Chromium 系应用候选窗定位：扩展上报光标 + 鼠标点击兜底（#24）
+- ✅ **OLED 小屏同步**：电脑端渲染 128x64 位图 + HTTP 推送 + UDP 自动发现；ESP8266 固件零第三方库（#25）
 
 ### 8.2 后续计划
 
@@ -336,6 +383,7 @@ git push origin main v0.3.1        # 推送 tag 即触发构建与发版
 |---|---|---|
 | 高 | 用户实机体验打磨 | 长期使用暴露的手感问题（候选延迟、误切换、词频调优） |
 | 高 | 词库扩充 | 按需导入更多词库（如 `runtime/scel_test/it.scel` 网络流行新词 7356 条已就绪，一条命令导入） |
+| 中 | 小屏增强 | 竖排多候选、已上屏文本回显、翻页显示、息屏省电、按键翻页 |
 | 中 | L3 启发式增强 | 更多上下文模式（代码块内、Markdown、聊天软件 @提及 等） |
 | 中 | 候选窗富文本高亮 | 竖排模式下第一候选高亮渲染 |
 | 中 | 托盘图标状态联动 | 图标随中英状态切换 / 暂停时变色 |

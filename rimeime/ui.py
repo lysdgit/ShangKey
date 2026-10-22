@@ -304,6 +304,7 @@ class UI:
         self.on_tick = None   # 主线程 30ms 节拍（焦点防抖等用），由 Frontend 注入
         self.on_toggle = None  # 手动切换中英（钩子线程投递，主线程执行）
         self.on_pause = None  # 暂停/恢复键盘拦截（托盘投递，主线程执行）
+        self.on_toggle_oled = None  # 开关 OLED 小屏服务（托盘投递）
 
     def poll(self):
         try:
@@ -333,6 +334,9 @@ class UI:
                 elif kind == "pause":
                     if self.on_pause:
                         self.on_pause()
+                elif kind == "toggle_oled":
+                    if self.on_toggle_oled:
+                        self.on_toggle_oled()
                 elif kind == "quit":
                     self.root.destroy()
                     return
