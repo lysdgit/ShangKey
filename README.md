@@ -6,6 +6,8 @@
 2. **按场景自动切换中英文**——分层规则引擎，写代码、敲命令、逛编程网站时自动切英文，回聊天窗口自动切回中文。
 
 > 当前版本 **v0.3.0**，原型验证阶段（全局键盘钩子方案，非 TSF 标准 IME，见 [8. 已完成与后续计划](#8-已完成与后续计划)）。
+>
+> 仓库：<https://github.com/lysdgit/ShangKey>
 
 ---
 
@@ -118,7 +120,7 @@ flowchart TB
 ### 3.2 方式一：运行打包版（推荐）
 
 ```text
-1. 把 dist/ 整个目录拷到任意位置
+1. 下载 Release 里的 ShangKeyIME.exe 与 runtime/ 目录，放在同一处
 2. 双击 ShangKeyIME.exe
 3. 托盘出现蓝色「中」图标即启动成功
 ```
@@ -129,11 +131,14 @@ flowchart TB
 ### 3.3 方式二：源码运行（开发模式）
 
 ```bash
-cd C:\Users\Administrator\Documents\py_code\ShangKey
-C:\Users\Administrator\.workbuddy\binaries\python\envs\tk\Scripts\python.exe -u -m rimeime.main
+git clone https://github.com/lysdgit/ShangKey.git
+cd ShangKey
+pip install -r requirements.txt
+python -m rimeime.main
 ```
 
-> `envs\default` venv 缺 tkinter，必须用 `envs\tk`。
+> Windows 自带的 python 若缺 tkinter，请换带 tk 的发行版/虚拟环境；
+> 本机开发用的 venv 路径见 [6. 打包发布](#6-打包发布)。
 
 其他入口：
 
