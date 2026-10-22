@@ -26,6 +26,15 @@ ENTRY = Path(__file__).with_name("ime_entry.py")
 DIST = ROOT / "dist"
 RUNTIME = ROOT / "runtime"
 
+# GitHub Actions 的 Windows runner 默认 stdout 是 cp1252，中文 print 会抛
+# UnicodeEncodeError（构建已完成却显示失败）。统一改成 UTF-8 输出。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        if _stream and (_stream.encoding or "").lower() not in ("utf-8", "utf8"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 # 这两个 yaml 含本机 installation_id / 上次构建时间，不能进发布包
 SKIP_RIME_YAML = {"installation.yaml", "user.yaml"}
 
