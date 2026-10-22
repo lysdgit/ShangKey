@@ -227,8 +227,12 @@ python -m rimeime.importer <词库文件...> [--dry-run] [--no-deploy] [--no-sto
 
 ## 6. 打包发布
 
+### 6.1 本地构建
+
 ```bash
-C:\Users\Administrator\.workbuddy\binaries\python\envs\tk\Scripts\python.exe tools\build_exe.py
+# 需要带 tkinter + pyinstaller 的解释器（Windows 官方安装版自带 tk）
+pip install -r requirements.txt "pyinstaller>=6.22"
+python tools/build_exe.py
 ```
 
 产物：
@@ -237,8 +241,26 @@ C:\Users\Administrator\.workbuddy\binaries\python\envs\tk\Scripts\python.exe too
 |---|---|
 | `dist/ShangKeyIME.exe` | PyInstaller onefile + noconsole 单文件，图标为蓝底白「中」 |
 | `dist/runtime/` | 随包配置（规则/外观/图标/浏览器扩展），用户库与部署缓存首次运行自动生成 |
+| `dist/ShangKeyIME-v<版本>-win64.zip` | 发布包：exe + 纯净 `runtime/` + README + 启动说明，解压即用 |
+
+> 发布包的 `runtime/` 按白名单重新 staging，**不含** `installation.yaml` / `user.yaml`（本机 `installation_id`）与 `build/`、`userdb/` 运行数据。
 
 版本号在 `rimeime/__init__.py` 的 `__version__`，`--version` 可查；发版小步递增（0.3.0 → 0.3.1）。
+
+### 6.2 自动发版（GitHub Actions）
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml)：push 形如 `v*` 的 tag 时，在 `windows-latest` 上装依赖 → `import` 全模块自检 → `python tools/build_exe.py` → 校验 exe 体积与 zip 条目（防本机配置泄漏）→ 上传 artifact 并挂到 GitHub Release。
+
+发版三步：
+
+```bash
+# 1. 改 rimeime/__init__.py 的 __version__ = "0.3.1"
+git commit -am "release: v0.3.1"
+git tag -a v0.3.1 -m "v0.3.1"
+git push origin main v0.3.1        # 推送 tag 即触发构建与发版
+```
+
+也可以在 Actions 页面手动 **Run workflow**：只构建并保留 artifact，不创建 Release（用于验证 CI 是否健全）。
 
 ---
 
@@ -305,6 +327,7 @@ C:\Users\Administrator\.workbuddy\binaries\python\envs\tk\Scripts\python.exe too
 - ✅ 体验完善：候选窗光标跟随与多显示器 clamp、翻页键、模糊音、双拼、简繁、外观配置（#15~#19）
 - ✅ 工程化：词库管理界面、系统托盘、开机自启、真实 scel 回归、PyInstaller 打包发布（#20~#23）
 - ✅ 开源发布：代码开源到 [lysdgit/ShangKey](https://github.com/lysdgit/ShangKey)，`v0.3.0` 提供 exe 与完整发布包下载
+- ✅ CI 自动发版：GitHub Actions 监听 `v*` tag，自动构建 exe + 发布包并挂 Release（见 [6.2](#62-自动发版github-actions)）
 - ✅ Chromium 系应用候选窗定位：扩展上报光标 + 鼠标点击兜底（#24）
 
 ### 8.2 后续计划
