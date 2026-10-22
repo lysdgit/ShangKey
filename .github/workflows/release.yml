@@ -1,0 +1,79 @@
+name: Release
+
+# 打 tag（v*）自动构建 exe + 发布包并挂到 GitHub Release；
+# 也可在 Actions 页面手动触发，仅构建并留 artifact，不发版（用于验证构建是否健全）。
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pyinstaller>=6.22"
+
+      - name: Build exe and package
+        shell: pwsh
+        run: python tools/build_exe.py
+
+      - name: Verify artifacts
+        shell: pwsh
+        run: |
+          $exe = Get-Item dist/ShangKeyIME.exe
+          if ($exe.Length -lt 8MB) { throw "exe 体积异常: $($exe.Length) bytes" }
+          $zip = Get-Item dist/ShangKeyIME-v*-win64.zip
+          python -c "import sys, zipfile; z = zipfile.ZipFile(sys.argv[1]); n = z.namelist(); print(len(n), 'entries'); assert 'ShangKeyIME.exe' in n, 'missing exe'; assert any(x.startswith('runtime/') for x in n), 'missing runtime'; assert not any(x.endswith(('installation.yaml', 'user.yaml')) for x in n), 'leaked local id'" $zip.FullName
+          Write-Host "OK: $($exe.Name) $([math]::Round($exe.Length/1MB,2)) MB / $($zip.Name) $([math]::Round($zip.Length/1MB,2)) MB"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShangKeyIME-win64
+          path: |
+            dist/ShangKeyIME.exe
+            dist/ShangKeyIME-v*-win64.zip
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: |
+            dist/ShangKeyIME-v*-win64.zip
+            dist/ShangKeyIME.exe
+          generate_release_notes: true
+          body: |
+            ## ShangKey 输入法 ${{ github.ref_name }}
+
+            基于 RIME 引擎的 Windows 中英输入法原型（Python + ctypes 调用 Weasel 的 `rime.dll`）。
+
+            ### 安装
+            1. 下载 `ShangKeyIME-*-win64.zip` 解压到任意目录
+            2. 先安装 [小狼毫 Weasel 0.17.4](https://rime.im/download/)，本程序借用它的 `rime.dll` 与共享方案数据
+            3. 双击 `ShangKeyIME.exe`，托盘出现蓝色「中」图标即启动成功
+
+            ### 说明
+            - 全局键盘钩子方案，非 TSF 标准输入法，仅 Windows 10/11 x64；UAC 提权窗口内不生效
+            - Chrome / Edge 中候选窗精确跟随需加载 `runtime/browser-extension` 扩展
+            - exe 未签名，首次运行可能触发 SmartScreen 提示
+            - 详细功能与开发记录见 [README](https://github.com/${{ github.repository }}#readme)
