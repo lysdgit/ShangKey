@@ -119,8 +119,10 @@ flowchart TB
 
 ### 3.2 方式一：运行打包版（推荐）
 
+从 [Releases](https://github.com/lysdgit/ShangKey/releases) 下载 `ShangKeyIME-v0.3.0-win64.zip`（exe + 纯净 `runtime/` + 启动说明），解压到任意目录：
+
 ```text
-1. 下载 Release 里的 ShangKeyIME.exe 与 runtime/ 目录，放在同一处
+1. 解压，得到 ShangKeyIME.exe、runtime/、启动说明.txt
 2. 双击 ShangKeyIME.exe
 3. 托盘出现蓝色「中」图标即启动成功
 ```
@@ -302,6 +304,7 @@ C:\Users\Administrator\.workbuddy\binaries\python\envs\tk\Scripts\python.exe too
 - ✅ 分层切换引擎：L1 进程规则 / L2 URL（浏览器扩展）/ L3 UIA 上下文 / L4 手动记忆 + 状态持久化（#8~#14）
 - ✅ 体验完善：候选窗光标跟随与多显示器 clamp、翻页键、模糊音、双拼、简繁、外观配置（#15~#19）
 - ✅ 工程化：词库管理界面、系统托盘、开机自启、真实 scel 回归、PyInstaller 打包发布（#20~#23）
+- ✅ 开源发布：代码开源到 [lysdgit/ShangKey](https://github.com/lysdgit/ShangKey)，`v0.3.0` 提供 exe 与完整发布包下载
 - ✅ Chromium 系应用候选窗定位：扩展上报光标 + 鼠标点击兜底（#24）
 
 ### 8.2 后续计划
