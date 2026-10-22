@@ -1,0 +1,7 @@
+# ShangKey 用户补丁：合并在共享 default.yaml 之上
+# （用补丁而非整体替换，保留 key_binder / ascii_composer 等被 schema 引用的段落）
+patch:
+  schema_list:
+    - schema: luna_pinyin_simp
+    - schema: double_pinyin
+    - schema: double_pinyin_flypy

@@ -1,0 +1,17 @@
+# ShangKey double_pinyin_flypy 补丁（importer 自动管理，请勿手工编辑）
+patch:
+  translator/dictionary: shangkey
+  switches:
+    - name: ascii_mode
+      state: 0
+    - name: full_shape
+      state: 0
+    - name: simplification
+      state: 1
+    - name: ascii_punct
+      state: 0
+  key_binder/bindings/+:  # 编码中的翻页键
+    - {when: composing, accept: comma, send: Page_Up}
+    - {when: composing, accept: period, send: Page_Down}
+    - {when: composing, accept: minus, send: Page_Up}
+    - {when: composing, accept: equal, send: Page_Down}

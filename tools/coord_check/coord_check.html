@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>CAL ready</title>
+<style>body{font:16px system-ui;padding:40px}</style></head>
+<body>
+<h2>坐标换算验证页</h2>
+<p>在此页面上任意位置点击，脚本会把算出的屏幕坐标写进窗口标题（CAL x y）。</p>
+<div id="log" style="font:14px monospace;color:#555"></div>
+<script>
+function viewportOrigin() {
+  let isTop = true;
+  try { isTop = window.top === window; } catch (e) { isTop = false; }
+  if (!isTop) return { x: window.screenX, y: window.screenY };
+  const border = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+  const chromeH = Math.max(0, window.outerHeight - window.innerHeight - border);
+  return { x: window.screenX + border, y: window.screenY + chromeH };
+}
+document.addEventListener('mousedown', (e) => {
+  const o = viewportOrigin();
+  const dpr = window.devicePixelRatio || 1;
+  const px = Math.round((o.x + e.clientX) * dpr);
+  const py = Math.round((o.y + e.clientY) * dpr);
+  document.title = `CAL ${px} ${py} s=${window.screenX},${window.screenY}`
+    + ` o=${window.outerWidth},${window.outerHeight}`
+    + ` i=${window.innerWidth},${window.innerHeight}`
+    + ` d=${dpr} c=${e.clientX},${e.clientY}`;
+  document.getElementById('log').textContent =
+    `client=(${e.clientX},${e.clientY}) origin=(${o.x},${o.y}) dpr=${dpr} -> screen=(${px},${py})`;
+});
+document.addEventListener('mousemove', (e) => {
+  const o = viewportOrigin();
+  const dpr = window.devicePixelRatio || 1;
+  document.title = `MOV ${Math.round((o.x + e.clientX) * dpr)} ${Math.round((o.y + e.clientY) * dpr)}`;
+});
+</script>
+</body></html>

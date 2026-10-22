@@ -1,0 +1,24 @@
+# Rime dictionary
+# encoding: utf-8
+#
+# ShangKey 导入词库（rimeime.importer 自动管理，请勿手工编辑）
+---
+name: shangkey
+version: "2026.10.21"
+sort: by_weight
+use_preset_vocabulary: true
+import_tables:
+  - luna_pinyin
+...
+
+上海键	shang hai jian	12000
+翻译	fan yi	9999
+你好	ni hao	8000
+输入法	shu ru fa	6000
+你好世界	ni hao shi jie	5000
+自定义词	ci kong	3000
+囧	jiong	995
+测试	ce shi	800
+上海间	shang hai jian	500
+反译	fan yi	100
+槑	mei	5

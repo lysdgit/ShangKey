@@ -1,0 +1,6 @@
+# 运行依赖
+keyboard>=0.13.5
+pypinyin>=0.51.0
+
+# 打包依赖（仅 python tools/build_exe.py 时需要）
+# pyinstaller>=6.22.0

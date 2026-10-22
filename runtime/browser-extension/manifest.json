@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "ShangKey 输入法助手",
+  "version": "1.1.0",
+  "description": "把活动标签页 URL 与输入框光标位置上报给本机 ShangKey 输入法（127.0.0.1:61823），用于按网页自动切换中英文、让候选窗跟随光标。",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["tabs"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

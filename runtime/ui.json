@@ -1,0 +1,15 @@
+{
+  "comment": "ShangKey 候选窗/状态窗外观配置。改完重启 IME 生效；删掉本文件则用内置默认。",
+  "font_family": "Microsoft YaHei",
+  "preedit_font_size": 11,
+  "candidate_font_size": 13,
+  "status_font_size": 10,
+  "bg": "#ffffff",
+  "fg": "#1f2328",
+  "border": "#c8cdd4",
+  "highlight_color": "#c7391f",
+  "orientation": "horizontal",
+  "opacity": 0.96,
+  "status_bg": "#1f2328",
+  "status_fg": "#ffffff"
+}

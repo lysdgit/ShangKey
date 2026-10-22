@@ -1,0 +1,16 @@
+{
+  "comment": "ShangKey 中英文自动切换规则。层级：L1 进程/窗口类/标题 -> L2 网页 URL（浏览器扩展 POST http://127.0.0.1:61823/url）-> L3 UIA 光标上下文启发式 -> L4 手动记忆（自动写 switch_memory.json）-> 默认。规则字段：name / mode zh|en / process 进程名列表（不含.exe）/ cls 窗口类 / title 正则 / url 正则（有 url 字段即 L2 规则）。顶层开关：fuzzy 模糊音（重启生效）；layers.l3 上下文启发式。改完重启 IME 生效。",
+  "default_mode": "zh",
+  "debounce_ms": 150,
+  "fuzzy": false,
+  "layers": { "l1": true, "l2": true, "l3": true, "l4": true },
+  "url_server": { "port": 61823 },
+  "rules": [
+    { "name": "VS Code", "process": ["Code", "Code - Insiders"], "mode": "en" },
+    { "name": "终端", "process": ["WindowsTerminal", "cmd", "powershell", "pwsh", "mintty", "ConEmu", "ConEmu64"], "mode": "en" },
+    { "name": "远程桌面", "process": ["mstsc"], "mode": "en" },
+    { "name": "数据库工具", "process": ["Navicat", "DBeaver"], "mode": "en" },
+    { "name": "编程网站", "url": "(github|stackoverflow|leetcode)\\.(com|cn)", "mode": "en" },
+    { "name": "中文网站", "url": "(baidu|zhihu|bilibili|taobao|jd)\\.com", "mode": "zh" }
+  ]
+}

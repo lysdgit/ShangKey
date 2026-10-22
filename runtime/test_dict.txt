@@ -1,0 +1,9 @@
+# ShangKey 测试词库 - 多格式混合
+# 制表符分隔，词语在前
+你好世界	ni hao shi jie	5000
+nihao	你好	8000
+上海键,shanghai jian,12000
+自定义词 ci kong 3000
+翻译	fanyi	9999
+; 分号注释行
+输入法	shu ru fa	6000

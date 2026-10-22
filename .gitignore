@@ -1,0 +1,33 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---- 构建产物（exe 走 GitHub Releases，不进仓库） ----
+build/
+dist/
+*.spec
+
+# ---- 第三方（体积大、授权各自独立，请自行获取） ----
+third_party/
+
+# ---- 本机工具/会话数据 ----
+.workbuddy/
+.vscode/
+.idea/
+
+# ---- 第三方词库（有版权，不入库） ----
+runtime/scel_test/
+
+# ---- 运行时生成 ----
+runtime/logs/
+runtime/ime.log
+runtime/ime_fault.txt
+runtime/status_pos.json
+runtime/switch_state.json
+
+# ---- RIME 部署缓存与用户库（每次打字都会变，且含本机 ID） ----
+runtime/rime_user/build/
+runtime/rime_user/*.userdb/
+runtime/rime_user/installation.yaml
+runtime/rime_user/user.yaml

@@ -1,0 +1,11 @@
+# Rime dictionary
+# encoding: utf-8
+---
+name: test_extra
+version: "1.0"
+sort: by_weight
+use_preset_vocabulary: false
+...
+囧	jiong	99.5%
+槑	mei	0.5%
+ ShangKey测试  shang key ce shi 4000
